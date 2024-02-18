@@ -18,7 +18,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: npm run lint
-      - run: npm test:coverage
+      - run: npm run test:coverage
       - run: npm run compile --ignore-scripts
       - run: npm publish --ignore-scripts --access public
         env:
