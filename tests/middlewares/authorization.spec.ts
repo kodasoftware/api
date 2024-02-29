@@ -1,20 +1,28 @@
 import { createMockContext } from '@kodasoftware/testing';
 import { Chance } from 'chance';
 
-import type { Middleware } from '@/@types';
-import { authorizationMiddlewareFactory } from '@/middlewares';
+import {
+  type AuthorizationMiddleware,
+  authorizationMiddlewareFactory,
+  type AuthService,
+} from '@/middlewares';
 
 const CHANCE = new Chance();
 const NEXT = jest.fn();
+const IS_AUTHORISED = jest.fn();
+
+class MockAuthService implements AuthService {
+  isAuthorised = IS_AUTHORISED;
+}
 
 describe('authorizationMiddleware', () => {
-  let authorizationMiddleware: Middleware;
+  let authorizationMiddleware: AuthorizationMiddleware;
   let permission: string;
 
   beforeEach(() => {
     permission = CHANCE.word();
     authorizationMiddleware = authorizationMiddlewareFactory({
-      permissions: { required: permission },
+      permission: { required: permission },
     });
   });
 
@@ -50,6 +58,40 @@ describe('authorizationMiddleware', () => {
     });
 
     describe('When permissions exist in auth', () => {
+      describe('And auth service exists and returns false', () => {
+        it('Then throws 401', async () => {
+          const context = createMockContext({
+            state: { auth: { permissions: [permission] } },
+            customProperties: { services: { auth: new MockAuthService() } },
+          }) as any;
+
+          IS_AUTHORISED.mockResolvedValue(false);
+
+          await expect(authorizationMiddleware(context, NEXT)).rejects.toThrow(
+            expect.objectContaining({
+              status: 401,
+              message: 'Unauthorized',
+            })
+          );
+        });
+      });
+
+      describe('And auth service exists and returns true', () => {
+        it('Then next is called', async () => {
+          const context = createMockContext({
+            state: { auth: { permissions: [permission] } },
+            customProperties: { services: { auth: new MockAuthService() } },
+          }) as any;
+
+          IS_AUTHORISED.mockResolvedValue(true);
+
+          await expect(authorizationMiddleware(context, NEXT)).resolves.toEqual(
+            undefined
+          );
+          expect(NEXT).toHaveBeenCalledTimes(1);
+        });
+      });
+
       it('Then next is called', async () => {
         const context = createMockContext({
           state: { auth: { permissions: [permission] } },

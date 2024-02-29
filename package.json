@@ -1,6 +1,6 @@
 {
   "name": "@kodasoftware/api",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A library for create Node, Koa-based applications.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,8 +32,8 @@
     "dist"
   ],
   "peerDependencies": {
-    "@kodasoftware/typescript": ">=0",
-    "@kodasoftware/monitoring": ">=0"
+    "@kodasoftware/monitoring": ">=0",
+    "@kodasoftware/typescript": ">=0"
   },
   "devDependencies": {
     "@kodasoftware/testing": "^0.0.0",

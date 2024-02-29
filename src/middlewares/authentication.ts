@@ -4,19 +4,15 @@ import JwksRsa from 'jwks-rsa';
 import type { Middleware } from '../@types';
 
 export function authenticationMiddlewareFactory(opts: {
-  jwksUri: string;
+  jwksUri?: string;
   cache?: boolean;
+  publicKey?: string;
 }): Middleware {
   return async function authenticationMiddleware(ctx, next) {
     if (ctx.state.auth) return next();
 
     const _ctx: typeof ctx = ctx;
     const auth = ctx.req.headers.authorization;
-    const jwksClient = JwksRsa({
-      jwksUri: opts.jwksUri,
-      cache: !!opts.cache,
-    });
-
     _ctx.assert(auth, 401, 'Unauthorized');
 
     const [type, token] = auth.split(' ');
@@ -31,20 +27,29 @@ export function authenticationMiddlewareFactory(opts: {
     } = decoded || { header: {} };
     _ctx.assert(kid && decoded, 401, 'Invalid token provided');
 
-    const key = await new Promise<null | JwksRsa.SigningKey>(res => {
-      jwksClient.getSigningKey(kid, (err, key) => {
-        if (err || !key) return res(null);
-        res(key);
+    let _publicKey: string;
+
+    if (!opts.publicKey) {
+      const jwksClient = JwksRsa({
+        jwksUri: opts.jwksUri || 'http://localhost/.well-known/',
+        cache: !!opts.cache,
       });
-    });
-    _ctx.assert(
-      key && key.getPublicKey(),
-      401,
-      'Could not retrieve signing key'
-    );
+      const key = await new Promise<null | JwksRsa.SigningKey>(res => {
+        jwksClient.getSigningKey(kid, (err, key) => {
+          if (err || !key) return res(null);
+          res(key);
+        });
+      });
+      _ctx.assert(
+        key && key.getPublicKey(),
+        401,
+        'Could not retrieve signing key'
+      );
+      _publicKey = key.getPublicKey();
+    } else _publicKey = opts.publicKey;
 
     const verified = await new Promise(res => {
-      verify(token, key.getPublicKey(), { complete: true }, (err, decoded) => {
+      verify(token, _publicKey!, { complete: true }, (err, decoded) => {
         if (err) res(false);
         if (!decoded) res(false);
         res(true);
