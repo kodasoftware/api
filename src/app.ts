@@ -43,9 +43,9 @@ export function createApplication<
   Context = KoaDefaultContext,
 >(opts: {
   config: AppConfig<Services>;
-  koa: KoaOpts;
-  cors: CorsOptions;
-  body: BodyOptions;
+  koa?: KoaOpts;
+  cors?: CorsOptions;
+  body?: BodyOptions;
   swagger: Omit<SwaggerConfig, 'title'>;
 }) {
   return new Application<State, Context, Services>(opts);
@@ -73,8 +73,8 @@ class Application<
       ) => Promise<void | Response>;
     };
     koa?: KoaOpts;
-    cors: CorsOptions;
-    body: BodyOptions;
+    cors?: CorsOptions;
+    body?: BodyOptions;
     swagger: Omit<SwaggerConfig, 'title'>;
   }) {
     super(opts.koa);
