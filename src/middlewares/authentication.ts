@@ -22,10 +22,7 @@ export function authenticationMiddlewareFactory(opts: {
     if (type !== 'Bearer') ctx.throw(401, 'Invalid authorization header');
 
     const decoded = decode(token, { complete: true });
-    const {
-      header: { kid },
-    } = decoded || { header: {} };
-    _ctx.assert(kid && decoded, 401, 'Invalid token provided');
+    _ctx.assert(decoded, 401, 'Token could not be decoded');
 
     let _publicKey: string;
 
@@ -34,6 +31,11 @@ export function authenticationMiddlewareFactory(opts: {
         jwksUri: opts.jwksUri || 'http://localhost/.well-known/',
         cache: !!opts.cache,
       });
+      const {
+        header: { kid },
+      } = decoded || { header: {} };
+      _ctx.assert(kid, 401, 'Invalid token provided');
+
       const key = await new Promise<null | JwksRsa.SigningKey>(res => {
         jwksClient.getSigningKey(kid, (err, key) => {
           if (err || !key) return res(null);

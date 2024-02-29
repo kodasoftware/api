@@ -70,7 +70,7 @@ describe('authenticationMiddleware', () => {
         await expect(authenticationMiddleware(context, NEXT)).rejects.toThrow(
           expect.objectContaining({
             ...UNAUTHORIZED_ERROR,
-            message: 'Invalid token provided',
+            message: 'Token could not be decoded',
           })
         );
       });
@@ -273,25 +273,7 @@ describe('authenticationMiddleware', () => {
         await expect(authenticationMiddleware(context, NEXT)).rejects.toThrow(
           expect.objectContaining({
             ...UNAUTHORIZED_ERROR,
-            message: 'Invalid token provided',
-          })
-        );
-      });
-
-      it('Then throws 401 error when JWT missing client identifier', async () => {
-        const { privateKey } = jwks.generateKeys();
-        const token = generateToken({
-          payload: { permissions: [] },
-          privateKey,
-          algorithm: 'RS256',
-        });
-        const context = createMockContext({
-          headers: { Authorization: `Bearer ${token}` },
-        }) as any;
-        await expect(authenticationMiddleware(context, NEXT)).rejects.toThrow(
-          expect.objectContaining({
-            ...UNAUTHORIZED_ERROR,
-            message: 'Invalid token provided',
+            message: 'Token could not be decoded',
           })
         );
       });
