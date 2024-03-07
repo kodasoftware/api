@@ -27,7 +27,7 @@ describe('errorMiddlewre', () => {
         await errorMiddleware(context, NEXT);
 
         expect(NEXT).toHaveBeenCalledTimes(1);
-        expect(throwFn).toHaveBeenCalledWith(500);
+        expect(throwFn).toHaveBeenCalledWith(500, '');
       });
     });
 

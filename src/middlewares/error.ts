@@ -1,5 +1,3 @@
-import { HttpError as KoaHttpError } from 'koa';
-
 import type { Middleware } from '../@types';
 
 export function errorMiddlewareFactory(): Middleware {
@@ -11,11 +9,10 @@ export function errorMiddlewareFactory(): Middleware {
       const status = error.status || 500;
       const message = error.message;
 
-      ctx.status = status;
-
-      if (!message) ctx.throw(status);
-      if (error instanceof KoaHttpError) throw error;
-      if (error.expose) ctx.throw(status, message, error);
+      if (error.expose) {
+        ctx.body = error;
+        ctx.throw(status, message, error);
+      }
 
       ctx.throw(status, message);
     }

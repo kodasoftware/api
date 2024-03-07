@@ -1,5 +1,5 @@
 export * from './@types';
-export * from './app';
+export { createApplication } from './app';
 export * from './middlewares';
 export * from './router';
 export * from './swagger';

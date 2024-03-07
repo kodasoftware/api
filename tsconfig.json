@@ -4,7 +4,8 @@
     "baseUrl": "./",
     "outDir": "dist",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@google-cloud/functions-framework/*": ["node_modules/@google-cloud/functions-framework/build/src/*"]
     },
     "verbatimModuleSyntax": false
   },

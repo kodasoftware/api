@@ -1,31 +1,32 @@
-import type { LogLevel } from '@kodasoftware/monitoring';
-import { createLogger } from '@kodasoftware/monitoring';
-import type { Server } from 'http';
-import { createServer } from 'http';
-import type {
-  DefaultContext as KoaDefaultContext,
-  DefaultState as KoaDefaultState,
+import { createLogger, type LogLevel } from '@kodasoftware/monitoring';
+import { createServer, type Server } from 'http';
+import Koa, {
+  type DefaultContext as KoaDefaultContext,
+  type DefaultState as KoaDefaultState,
 } from 'koa';
-import Koa from 'koa';
-import serverlessHttp from 'serverless-http';
+import type { Options } from 'serverless-http';
 
-import type { BodyOptions } from './middlewares/body';
-import { bodyParserMiddlewareFactory } from './middlewares/body';
-import type { CorsOptions } from './middlewares/cors';
-import { corsMiddlewareFactory } from './middlewares/cors';
+import {
+  type BodyOptions,
+  bodyParserMiddlewareFactory,
+} from './middlewares/body';
+import { corsMiddlewareFactory, type CorsOptions } from './middlewares/cors';
 import { errorMiddlewareFactory } from './middlewares/error';
 import { loggerMiddlewareFactory } from './middlewares/logger';
-import type { SwaggerConfig } from './middlewares/swagger';
-import { swaggerMiddlewareFactory } from './middlewares/swagger';
+import {
+  type SwaggerConfig,
+  swaggerMiddlewareFactory,
+} from './middlewares/swagger';
 import type { DefaultContext, DefaultState } from './@types';
 import { healthzRouteFactory } from './routes';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AppConfig<Services = Record<string, any>> = {
   name: string;
-  logLevel: LogLevel;
-  services: Services;
+  logLevel?: LogLevel;
+  services?: Services;
 };
+
 type KoaOpts = {
   env?: string | undefined;
   keys?: string[] | undefined;
@@ -35,6 +36,10 @@ type KoaOpts = {
   maxIpsCount?: number | undefined;
   asyncLocalStorage?: boolean | undefined;
 };
+
+interface ServerlessOpts extends Omit<Options, 'provider'> {
+  provider?: 'aws' | 'azure' | 'gcloud';
+}
 
 export function createApplication<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,23 +51,24 @@ export function createApplication<
   koa?: KoaOpts;
   cors?: CorsOptions;
   body?: BodyOptions;
-  swagger: Omit<SwaggerConfig, 'title'>;
+  swagger?: Omit<SwaggerConfig, 'title'>;
 }) {
   return new Application<State, Context, Services>(opts);
 }
 
-class Application<
+export class Application<
   State = KoaDefaultState,
   Context = KoaDefaultContext,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Services = Record<string, any>,
 > extends Koa<State & DefaultState, Context & DefaultContext> {
   private _server?: Server;
+  private readonly name: string;
 
   constructor(opts: {
     config: {
       name: string;
-      logLevel: LogLevel;
+      logLevel?: LogLevel;
       services?: Services;
     };
     healthz?: {
@@ -75,7 +81,7 @@ class Application<
     koa?: KoaOpts;
     cors?: CorsOptions;
     body?: BodyOptions;
-    swagger: Omit<SwaggerConfig, 'title'>;
+    swagger?: Omit<SwaggerConfig, 'title'>;
   }) {
     super(opts.koa);
     const {
@@ -84,20 +90,37 @@ class Application<
       services,
     } = opts.config;
 
-    if (services) this.context.services = services;
-    this.context.log = createLogger({ name, logLevel });
+    this.name = name;
+    this.context.services = services || {};
+    this.context.log = createLogger({ name, logLevel: logLevel || 'error' });
 
     this.use(loggerMiddlewareFactory());
     this.use(errorMiddlewareFactory());
     this.use(corsMiddlewareFactory(opts.cors || {}));
     this.use(bodyParserMiddlewareFactory(opts.body || {}));
     this.use(healthzRouteFactory(opts.healthz).attach());
-    this.use(
-      swaggerMiddlewareFactory({
-        title: name,
-        ...(opts.swagger || {}),
-      })
-    );
+
+    if (opts.swagger) {
+      const {
+        spec: { definition = {}, ..._spec },
+      } = opts.swagger;
+      const { info = {}, ..._definition } = definition;
+      this.use(
+        swaggerMiddlewareFactory({
+          title: name,
+          spec: {
+            definition: {
+              info: {
+                title: name,
+                ...info,
+              },
+              ..._definition,
+            },
+            ..._spec,
+          },
+        })
+      );
+    }
   }
 
   public start(opts: { port: number }) {
@@ -114,14 +137,25 @@ class Application<
     return this;
   }
 
-  public serverless(opts?: serverlessHttp.Options) {
-    return serverlessHttp(
-      this,
-      Object.assign(opts || {}, {
-        requestId: 'x-correlation-id',
-        request: this.requestTransformation.bind(this),
-        // response: this.responseTransformation.bind(this),
-      })
+  public serverless(opts?: ServerlessOpts) {
+    if (opts?.provider === 'gcloud') {
+      // Handle Google Cloud serverless
+      return import('@google-cloud/functions-framework').then(({ http }) =>
+        http(this.name, this.callback())
+      );
+    }
+
+    // Handle AWS and Azure serverless
+    return import('serverless-http').then(({ default: serverlessHttp }) =>
+      serverlessHttp(
+        this,
+        Object.assign((opts as Options) || {}, {
+          requestId: 'x-correlation-id',
+          ...(opts?.provider === 'aws' || !opts?.provider
+            ? { request: this.requestTransformation.bind(this) }
+            : {}),
+        })
+      )
     );
   }
 
@@ -137,16 +171,4 @@ class Application<
     event.headers['x-correlation-id'] = context.awsRequestId;
     this.context.log.trace({ request, event, context }, 'Request');
   }
-
-  // private responseTransformation(
-  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //   response: any,
-  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //   event: any,
-  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //   context: any
-  // ) {
-  //   response.setHeader('x-correlation-id', context.awsRequestId);
-  //   this.context.log.trace({ response, event, context }, 'Response');
-  // }
 }

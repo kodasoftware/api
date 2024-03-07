@@ -20,8 +20,15 @@ try {
   application.end();
 }
 
-// Or you can export as a serverless handler instead with the below - simple!
-// export const handler = application.serverless();
+// Or you can export as a serverless handler instead with one of the below examples - simple!
+// AWS - Lambda
+// export const handler = application.serverless({ provider: 'aws' });
+
+// Azure - Function
+// export const nameOfFunction = application.serverless({ provider: 'azure' });
+
+// Google Cloud - Cloud Function
+// application.serverless({ provider: 'gcloud' });
 
 ```
 

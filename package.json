@@ -1,6 +1,6 @@
 {
   "name": "@kodasoftware/api",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A library for create Node, Koa-based applications.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,8 +32,10 @@
     "dist"
   ],
   "peerDependencies": {
+    "@google-cloud/functions-framework": ">=3",
     "@kodasoftware/monitoring": ">=0",
-    "@kodasoftware/typescript": ">=0"
+    "@kodasoftware/typescript": ">=0",
+    "serverless-http": ">=3"
   },
   "devDependencies": {
     "@kodasoftware/testing": "^0.0.0",
@@ -74,7 +76,6 @@
     "koa-body": "^6.0.1",
     "koa-compose": "^4.1.0",
     "koa2-swagger-ui": "^5.10.0",
-    "serverless-http": "^3.2.0",
     "swagger-jsdoc": "^6.2.8"
   }
 }
